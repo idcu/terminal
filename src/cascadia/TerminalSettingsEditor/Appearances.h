@@ -17,8 +17,7 @@ Author(s):
 #pragma once
 
 #include "Font.g.h"
-#include "AxisKeyValuePair.g.h"
-#include "FeatureKeyValuePair.g.h"
+#include "FontKeyValuePair.g.h"
 #include "Appearances.g.h"
 #include "AppearanceViewModel.g.h"
 #include "Utils.h"
@@ -30,74 +29,26 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
 {
     struct Font : FontT<Font>
     {
-    public:
-        Font(winrt::hstring name, winrt::hstring localizedName, wil::com_ptr<IDWriteFontFamily> family) :
-            _Name{ std::move(name) },
-            _LocalizedName{ std::move(localizedName) },
-            _family{ std::move(family) }
-        {
-        }
-
-        hstring ToString() { return _LocalizedName; }
-        Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring> FontAxesTagsAndNames();
-        Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring> FontFeaturesTagsAndNames();
+        Font(winrt::hstring name, winrt::hstring localizedName);
 
         WINRT_PROPERTY(hstring, Name);
         WINRT_PROPERTY(hstring, LocalizedName);
-
-    private:
-        winrt::hstring _tagToString(DWRITE_FONT_AXIS_TAG tag);
-        winrt::hstring _tagToString(DWRITE_FONT_FEATURE_TAG tag);
-
-        Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring> _fontAxesTagsAndNames;
-        Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring> _fontFeaturesTagsAndNames;
-        wil::com_ptr<IDWriteFontFamily> _family;
     };
 
-    struct AxisKeyValuePair : AxisKeyValuePairT<AxisKeyValuePair>, ViewModelHelper<AxisKeyValuePair>
+    struct FontKeyValuePair : FontKeyValuePairT<FontKeyValuePair>, ViewModelHelper<FontKeyValuePair>
     {
-        AxisKeyValuePair(winrt::hstring axisKey, float axisValue, const Windows::Foundation::Collections::IMap<winrt::hstring, float>& baseMap, const Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring>& tagToNameMap);
+        FontKeyValuePair(uint32_t key, float value);
 
-        winrt::hstring AxisKey();
-        void AxisKey(winrt::hstring axisKey);
-
-        float AxisValue();
-        void AxisValue(float axisValue);
-
-        int32_t AxisIndex();
-        void AxisIndex(int32_t axisIndex);
+        uint32_t Key() const noexcept;
+        winrt::hstring KeyDisplayString() const;
+        float Value() const noexcept;
+        void Value(float v);
 
         til::property_changed_event PropertyChanged;
 
     private:
-        winrt::hstring _AxisKey;
-        float _AxisValue;
-        int32_t _AxisIndex;
-        Windows::Foundation::Collections::IMap<winrt::hstring, float> _baseMap{ nullptr };
-        Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring> _tagToNameMap{ nullptr };
-    };
-
-    struct FeatureKeyValuePair : FeatureKeyValuePairT<FeatureKeyValuePair>, ViewModelHelper<FeatureKeyValuePair>
-    {
-        FeatureKeyValuePair(winrt::hstring featureKey, uint32_t featureValue, const Windows::Foundation::Collections::IMap<winrt::hstring, uint32_t>& baseMap, const Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring>& tagToNameMap);
-
-        winrt::hstring FeatureKey();
-        void FeatureKey(winrt::hstring featureKey);
-
-        uint32_t FeatureValue();
-        void FeatureValue(uint32_t featureValue);
-
-        int32_t FeatureIndex();
-        void FeatureIndex(int32_t featureIndex);
-
-        til::property_changed_event PropertyChanged;
-
-    private:
-        winrt::hstring _FeatureKey;
-        uint32_t _FeatureValue;
-        int32_t _FeatureIndex;
-        Windows::Foundation::Collections::IMap<winrt::hstring, uint32_t> _baseMap{ nullptr };
-        Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring> _tagToNameMap{ nullptr };
+        uint32_t _key;
+        float _value;
     };
 
     struct AppearanceViewModel : AppearanceViewModelT<AppearanceViewModel>, ViewModelHelper<AppearanceViewModel>
@@ -118,17 +69,18 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
         Model::FontConfig LineHeightOverrideSource() const;
 
         void SetFontWeightFromDouble(double fontWeight);
-        void SetBackgroundImageOpacityFromPercentageValue(double percentageValue);
-        void SetBackgroundImagePath(winrt::hstring path);
 
-        // background image
-        bool UseDesktopBGImage();
-        void UseDesktopBGImage(const bool useDesktop);
-        bool BackgroundImageSettingsVisible();
+        Windows::Foundation::Collections::IObservableVector<Editor::FontKeyValuePair> FontAxes();
+        const std::vector<Windows::UI::Xaml::Controls::MenuFlyoutItemBase>& FontAxesUnused() { return _fontAxesUnused; }
+        bool HasFontAxes() const;
+        void ClearFontAxes();
+        Model::FontConfig FontAxesOverrideSource() const;
 
-        void ClearColorScheme();
-        Editor::ColorSchemeViewModel CurrentColorScheme();
-        void CurrentColorScheme(const Editor::ColorSchemeViewModel& val);
+        Windows::Foundation::Collections::IObservableVector<Editor::FontKeyValuePair> FontFeatures();
+        const std::vector<Windows::UI::Xaml::Controls::MenuFlyoutItemBase>& FontFeaturesUnused() { return _fontFeaturesUnused; }
+        bool HasFontFeatures() const;
+        void ClearFontFeatures();
+        Model::FontConfig FontFeaturesOverrideSource() const;
 
         void AddNewAxisKeyValuePair();
         void DeleteAxisKeyValuePair(winrt::hstring key);
@@ -142,8 +94,18 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
         bool AreFontFeaturesAvailable();
         bool CanFontFeaturesBeAdded();
 
+        // background image
+        bool UseDesktopBGImage();
+        void UseDesktopBGImage(const bool useDesktop);
+        bool BackgroundImageSettingsVisible();
+        void SetBackgroundImageOpacityFromPercentageValue(double percentageValue);
+        void SetBackgroundImagePath(winrt::hstring path);
+
+        void ClearColorScheme();
+        Editor::ColorSchemeViewModel CurrentColorScheme();
+        void CurrentColorScheme(const Editor::ColorSchemeViewModel& val);
+
         WINRT_PROPERTY(bool, IsDefault, false);
-        WINRT_PROPERTY(bool, HasPowerlineCharacters, false);
 
         // These settings are not defined in AppearanceConfig, so we grab them
         // from the source profile itself. The reason we still want them in the
@@ -152,8 +114,6 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
         // are defined in AppearanceConfig and some that are not.
         OBSERVABLE_PROJECTED_SETTING(_appearance.SourceProfile().FontInfo(), FontSize);
         OBSERVABLE_PROJECTED_SETTING(_appearance.SourceProfile().FontInfo(), FontWeight);
-        OBSERVABLE_PROJECTED_SETTING(_appearance.SourceProfile().FontInfo(), FontAxes);
-        OBSERVABLE_PROJECTED_SETTING(_appearance.SourceProfile().FontInfo(), FontFeatures);
         OBSERVABLE_PROJECTED_SETTING(_appearance.SourceProfile().FontInfo(), EnableBuiltinGlyphs);
         OBSERVABLE_PROJECTED_SETTING(_appearance.SourceProfile().FontInfo(), EnableColorGlyphs);
 
@@ -169,28 +129,28 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
         OBSERVABLE_PROJECTED_SETTING(_appearance, IntenseTextStyle);
         OBSERVABLE_PROJECTED_SETTING(_appearance, AdjustIndistinguishableColors);
         WINRT_OBSERVABLE_PROPERTY(Windows::Foundation::Collections::IObservableVector<Editor::ColorSchemeViewModel>, SchemesList, _propertyChangedHandlers, nullptr);
-        WINRT_OBSERVABLE_PROPERTY(winrt::hstring, MissingFontFaces, _propertyChangedHandlers);
-        WINRT_OBSERVABLE_PROPERTY(winrt::hstring, ProportionalFontFaces, _propertyChangedHandlers);
-        WINRT_OBSERVABLE_PROPERTY(Windows::Foundation::Collections::IObservableVector<Editor::AxisKeyValuePair>, FontAxesVector, _propertyChangedHandlers, nullptr);
-        WINRT_OBSERVABLE_PROPERTY(Windows::Foundation::Collections::IObservableVector<Editor::FeatureKeyValuePair>, FontFeaturesVector, _propertyChangedHandlers, nullptr);
 
     private:
+        struct FontFaceDependents
+        {
+            Windows::Foundation::Collections::IObservableVector<Editor::FontKeyValuePair> fontAxesUsed;
+            Windows::Foundation::Collections::IObservableVector<Editor::FontKeyValuePair> fontFeaturesUsed;
+            std::vector<Windows::UI::Xaml::Controls::MenuFlyoutItemBase> fontAxesUnused;
+            std::vector<Windows::UI::Xaml::Controls::MenuFlyoutItemBase> fontFeaturesUnused;
+            winrt::hstring missingFontFaces;
+            winrt::hstring proportionalFontFaces;
+            bool hasPowerlineCharacters = false;
+
+        };
         void _refreshFontFaceDependents();
-        Editor::AxisKeyValuePair _CreateAxisKeyValuePairHelper(winrt::hstring axisKey, float axisValue, const Windows::Foundation::Collections::IMap<winrt::hstring, float>& baseMap, const Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring>& tagToNameMap);
-        Editor::FeatureKeyValuePair _CreateFeatureKeyValuePairHelper(winrt::hstring axisKey, uint32_t axisValue, const Windows::Foundation::Collections::IMap<winrt::hstring, uint32_t>& baseMap, const Windows::Foundation::Collections::IMap<winrt::hstring, winrt::hstring>& tagToNameMap);
-        bool _IsDefaultFeature(winrt::hstring featureTag);
 
         Model::AppearanceConfig _appearance;
         winrt::hstring _lastBgImagePath;
-        std::wstring _primaryFontName;
+        FontFaceDependents _fontFaceDependents;
     };
 
     struct Appearances : AppearancesT<Appearances>
     {
-    public:
-        static winrt::hstring FontAxisName(const winrt::hstring& key);
-        static winrt::hstring FontFeatureName(const winrt::hstring& key);
-
         Appearances();
 
         // CursorShape visibility logic
@@ -253,6 +213,4 @@ namespace winrt::Microsoft::Terminal::Settings::Editor::implementation
 namespace winrt::Microsoft::Terminal::Settings::Editor::factory_implementation
 {
     BASIC_FACTORY(Appearances);
-    BASIC_FACTORY(AxisKeyValuePair);
-    BASIC_FACTORY(FeatureKeyValuePair);
 }
